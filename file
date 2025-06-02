@@ -1,0 +1,73 @@
+Situation:
+A regional outage has been experienced in the us-central1 region of Google Cloud that has impacted multiple services like Cloud SQL databases, Cloud Storage, and Pub/Sub messaging systems. This has led to a service disruption of high availability and low downtime based business applications.
+
+Task:
+The goal is to trigger a failover and recovery process as soon as possible to ensure business continuity during the outage. The strategy will leverage Google Cloud capabilities including replicas in Cloud SQL, multi-region Cloud Storage, and Pub/Sub notifications to minimize downtime and bring service back up.
+
+Actions:
+1. Failover Procedure for Cloud SQL:
+Primary Goal: Ensure database services stay available by demoting a read replica in an alternate region (e.g., us-east1).
+
+Step-by-Step Procedure:
+
+Monitor the outage using Cloud Monitoring (Stackdriver) to confirm the failure in the us-central1 region.
+
+Confirm current Cloud SQL replica configuration. Ensure that a Cloud SQL read replica in another region (e.g., us-east1) exists.
+
+If a replica exists, make the read replica primary using the following command:
+
+bash
+Copy
+Edit
+gcloud sql instances promote-replica [INSTANCE_NAME]
+This will make the replica in us-east1 the primary database.
+
+Update configurations for applications and DNS entries to point towards the newly promoted database in us-east1.
+
+Proceed with monitoring database health in the new region to ensure stability.
+
+2. Cloud Storage Failover:
+Major Goal: Ensure data availability by failing over to multi-region Cloud Storage buckets.
+
+Step-by-Step Procedure:
+
+Verify multi-region storage configuration: Ensure Cloud Storage is configured with a multi-region bucket. If you have previously created a bucket with a regional configuration (e.g., us-central1), you must create a new multi-region bucket, or re-configure data replication between regions.
+
+Configure Cloud Storage replication:
+
+If you have not previously enabled cross-region replication, you may wish to use Cloud Storage's "Nearline" or "Coldline" storage classes for use in failover.
+
+To replicate data across regions (e.g., us-east1), employ Storage Transfer Service:
+
+bash
+Copy
+Edit
+gsutil -m rsync -r gs://[source-bucket] gs://[destination-bucket]
+Switch application endpoints to new multi-region Cloud Storage bucket when needed.
+
+Verify data consistency and availability in the failover region.
+
+3. Pub/Sub Failover and Notification:
+Primary Goal: Be as unobtrusive as possible in event-driven applications and never lose messages during the outage.
+
+Step-by-Step Process
+
+Check Pub/Sub system health: Monitor your Pub/Sub topics and subscriptions with Cloud Monitoring. An outage may impact message delivery.
+
+Configure Pub/Sub failover:
+
+It's possible to have more than one subscription across regions so that when one region is down, messages are consumed from a different region.
+
+For instance, create a new subscription and topic in the failover region (us-east1).
+
+Utilize Cloud Pub/Sub's cross-region replication to send messages to the backup region.
+
+Enable Pub/Sub alerts: Set up Google Cloud Pub/Sub alerts to notify you when you have problems or anomalies in your subscription. This helps you keep track of any failures and react immediately.
+
+bash
+Copy
+Edit
+gcloud pubsub topics publish [TOPIC_NAME] --message "Regional outage detected"
+Reconfigure readers to read from the new region's subscription if necessary.
+
+Check message delivery and ensure the application is receiving the messages from the failover region.
